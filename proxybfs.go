@@ -5,31 +5,40 @@ package main
 
 import (
 	"fmt"
+	"flag"
+	"net"
 	"os"
 )
 
-// takes arguments, gives back a list of listeners, connectors, and
-// dict of other args
-func parseargs(args []string) (map[string]bool, map[string]bool, map[string]string) {
-	// using maps as a set
-	listeners := make(map[string]bool)
-	connectors := make(map[string]bool)
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "-l":
-			listeners[args[i+1]] = true
-		case "-c":
-			connectors[args[i+1]] = true
-		default:
-			fmt.Println("OH FUCK")
-		}
-	}
-	kwargs := make(map[string]string)
-	return listeners, connectors, kwargs
+//----------------------------------------------------------------------
+// get us some addresses
+type addresses []string
+func (addrs *addresses) String() string {
+	return fmt.Sprint(*addrs)
 }
+func (addrs *addresses) Set(value string) error {
+	*addrs = append(*addrs, value)
+	return nil
+}
+var listenersFlag addresses
+var connectorsFlag addresses
 
 func main() {
-	l,c,kw := parseargs(os.Args)
-	fmt.Println(l,c,kw)
+	flag.Var(&listenersFlag, "l", "Which ports to listen on")
+	flag.Var(&connectorsFlag, "c", "Which addresses to try to connect to")
+	flag.Parse()
+
+	if len(listenersFlag) + len(connectorsFlag) != 2 {
+		fmt.Fprint(os.Stderr, "Too many connections")
+		os.Exit(1)
+	}
+	fmt.Println(listenersFlag)
+	fmt.Println(connectorsFlag)
+
+	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {
+		fmt.Println("FUCK")
+	}
+	if len(listenersFlag) == 40 {
+		net.Dial("tcp", "google.com:8080")
+	}
 }

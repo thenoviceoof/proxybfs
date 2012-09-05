@@ -8,7 +8,66 @@ import (
 	"flag"
 	"net"
 	"os"
+	"bufio"
 )
+
+//----------------------------------------------------------------------
+// linking functions
+func pull_conn(conn net.Conn, c chan byte) {
+	read := bufio.NewReader(conn)
+	for {
+		byt, err := read.ReadByte()
+		if err != nil {
+		}
+		c <- byt
+	}
+}
+
+func push_conn(conn net.Conn, c chan byte) {
+	writer := bufio.NewWriter(conn)
+	for {
+		writer.WriteByte(<-c)
+		writer.Flush()
+	}
+}
+
+func linkcross() {
+	c := make(chan byte)
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+	}
+	conn, err := ln.Accept()
+	if err != nil {
+	}
+	go push_conn(conn, c)
+	chars :=  []byte("FUCK")
+	for i := 0; i < len(chars); i++ {
+		c <- chars[i]
+	}
+}
+
+// func linkcross_onn(list_conn net.Conn, conn_addr string) {
+// 	conn, err := net.Dial("tcp", conn_addr)
+// 	if err != nil {
+// 		fmt.Print(err)
+// 	}
+// 	fmt.Fprintf(list_conn, )
+// }
+
+// func linkcross(list_addr, conn_addr string) {
+// 	ln, err := net.Listen("tcp", list_addr)
+// 	if err != nil {
+// 		fmt.Print(err)
+// 	}
+// 	for {
+// 		conn, err := ln.Accept()
+// 		if err != nil {
+// 			fmt.Print(err)
+// 			continue
+// 		}
+// 		go linkcross_one(conn, conn_addr)
+// 	}
+// }
 
 //----------------------------------------------------------------------
 // get us some addresses
@@ -29,7 +88,7 @@ func main() {
 	flag.Parse()
 
 	if len(listenersFlag) + len(connectorsFlag) != 2 {
-		fmt.Fprint(os.Stderr, "Too many connections")
+		fmt.Fprintln(os.Stderr, "Only 2 connections allowed")
 		os.Exit(1)
 	}
 	fmt.Println(listenersFlag)
@@ -41,4 +100,5 @@ func main() {
 	if len(listenersFlag) == 40 {
 		net.Dial("tcp", "google.com:8080")
 	}
+	linkcross()
 }

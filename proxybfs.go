@@ -18,7 +18,10 @@ func pull_conn(conn net.Conn, c chan byte) {
 	for {
 		byt, err := read.ReadByte()
 		if err != nil {
+			fmt.Println(err)
 		}
+		fmt.Println("Got:")
+		fmt.Println(string(byt))
 		c <- byt
 	}
 }
@@ -26,24 +29,34 @@ func pull_conn(conn net.Conn, c chan byte) {
 func push_conn(conn net.Conn, c chan byte) {
 	writer := bufio.NewWriter(conn)
 	for {
-		writer.WriteByte(<-c)
+		byt := <-c
+		fmt.Println("pulling out:")
+		fmt.Println(byt)
+		writer.WriteByte(byt)
 		writer.Flush()
 	}
 }
 
 func linkcross() {
-	c := make(chan byte)
+	fmt.Println("listen")
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
+		fmt.Println(err)
 	}
-	conn, err := ln.Accept()
+	ln_conn, err := ln.Accept()
 	if err != nil {
+		fmt.Println(err)
 	}
-	go push_conn(conn, c)
-	chars :=  []byte("FUCK")
-	for i := 0; i < len(chars); i++ {
-		c <- chars[i]
-	}
+	fmt.Println("dial")
+	cn_conn, err := net.Dial("tcp", ":9090")
+	ltc := make(chan byte)
+	ctl := make(chan byte)
+	fmt.Println("Get a bunch of things")
+	go push_conn(ln_conn, ctl)
+	go push_conn(cn_conn, ltc)
+	go pull_conn(ln_conn, ltc)
+	go pull_conn(cn_conn, ctl)
+	ln.Accept()
 }
 
 // func linkcross_onn(list_conn net.Conn, conn_addr string) {

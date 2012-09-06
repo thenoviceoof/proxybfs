@@ -8,55 +8,76 @@ import (
 	"flag"
 	"net"
 	"os"
+	"io"  // for the EOF error
 	"bufio"
 )
 
 //----------------------------------------------------------------------
 // linking functions
-func pull_conn(conn net.Conn, c chan byte) {
+func pull_conn(conn net.Conn, c chan byte, closed chan bool) {
 	read := bufio.NewReader(conn)
 	for {
 		byt, err := read.ReadByte()
-		if err != nil {
+		switch err {
+		case io.EOF:
+			break
+		default:
 			fmt.Println(err)
 		}
-		fmt.Println("Got:")
-		fmt.Println(string(byt))
+		fmt.Print("got byte: " + string(byt))
 		c <- byt
 	}
+	close(c)
+	closed <- true
 }
 
 func push_conn(conn net.Conn, c chan byte) {
 	writer := bufio.NewWriter(conn)
 	for {
-		byt := <-c
-		fmt.Println("pulling out:")
-		fmt.Println(byt)
+		byt, ok := <-c
+		if !ok {
+			break
+		}
+		fmt.Print("putting byte: " + string(byt))
 		writer.WriteByte(byt)
 		writer.Flush()
 	}
+	conn.Close()
 }
 
-func linkcross() {
-	fmt.Println("listen")
-	ln, err := net.Listen("tcp", ":8080")
+// facilitate trading between two connections
+func crosspipe(pipea, pipeb net.Conn) {
+	fmt.Println("Linking up")
+	a2b := make(chan byte)
+	b2a := make(chan byte)
+	finish := make(chan bool)
+	go pull_conn(pipea, a2b, finish)
+	go pull_conn(pipeb, b2a, finish)
+	go push_conn(pipea, b2a)
+	go push_conn(pipeb, a2b)
+	fmt.Println("Finishing up...")
+	_, _ = <-finish, <-finish
+	fmt.Println("And there you have it!")
+}
+
+// for each listening connection, make an outgoing one
+func listenTo(list_addr, conn_addr string) {
+	ln, err := net.Listen("tcp", list_addr)
 	if err != nil {
 		fmt.Println(err)
 	}
-	ln_conn, err := ln.Accept()
-	if err != nil {
-		fmt.Println(err)
+	// keep accepting connections
+	for {
+		ln_conn, err := ln.Accept()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("dialing")
+		cn_conn, err := net.Dial("tcp", conn_addr)
+		fmt.Println("done dialing")
+		go crosspipe(ln_conn, cn_conn)
+		fmt.Println("waiting for new conn...")
 	}
-	fmt.Println("dial")
-	cn_conn, err := net.Dial("tcp", ":9090")
-	ltc := make(chan byte)
-	ctl := make(chan byte)
-	fmt.Println("Get a bunch of things")
-	go push_conn(ln_conn, ctl)
-	go push_conn(cn_conn, ltc)
-	go pull_conn(ln_conn, ltc)
-	go pull_conn(cn_conn, ctl)
-	ln.Accept()
 }
 
 // func linkcross_onn(list_conn net.Conn, conn_addr string) {
@@ -109,9 +130,9 @@ func main() {
 
 	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {
 		fmt.Println("FUCK")
+		listenTo(listenersFlag[0], connectorsFlag[0])
 	}
 	if len(listenersFlag) == 40 {
 		net.Dial("tcp", "google.com:8080")
 	}
-	linkcross()
 }

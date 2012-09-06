@@ -80,29 +80,6 @@ func listenTo(list_addr, conn_addr string) {
 	}
 }
 
-// func linkcross_onn(list_conn net.Conn, conn_addr string) {
-// 	conn, err := net.Dial("tcp", conn_addr)
-// 	if err != nil {
-// 		fmt.Print(err)
-// 	}
-// 	fmt.Fprintf(list_conn, )
-// }
-
-// func linkcross(list_addr, conn_addr string) {
-// 	ln, err := net.Listen("tcp", list_addr)
-// 	if err != nil {
-// 		fmt.Print(err)
-// 	}
-// 	for {
-// 		conn, err := ln.Accept()
-// 		if err != nil {
-// 			fmt.Print(err)
-// 			continue
-// 		}
-// 		go linkcross_one(conn, conn_addr)
-// 	}
-// }
-
 //----------------------------------------------------------------------
 // get us some addresses
 type addresses []string
@@ -129,7 +106,6 @@ func main() {
 	fmt.Println(connectorsFlag)
 
 	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {
-		fmt.Println("FUCK")
 		listenTo(listenersFlag[0], connectorsFlag[0])
 	}
 	if len(listenersFlag) == 40 {

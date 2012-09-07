@@ -10,6 +10,7 @@ import (
 	"os"
 	"bufio"
 	"regexp"
+	"time"
 )
 
 //----------------------------------------------------------------------
@@ -99,7 +100,7 @@ func listenOne(list_addr, conn_addr string) {
 		}
 		info("Connection created with " + conn_addr)
 		go crosspipe(ln_conn, cn_conn)
-		debug("waiting for new conn...")
+		debug("waiting for new connection...")
 	}
 }
 
@@ -117,6 +118,7 @@ func listenTwo(lista_addr, listb_addr string) {
 	}
 	// keep accepting connections
 	for {
+		debug("waiting for new connection...")
 		lna_conn, err := lna.Accept()
 		if err != nil {
 			info(err.Error())
@@ -129,12 +131,38 @@ func listenTwo(lista_addr, listb_addr string) {
 			continue
 		}
 		go crosspipe(lna_conn, lnb_conn)
-		debug("waiting for new conn...")
 	}
 }
 
+// time between failed connection tries
+var retryPeriod time.Duration
+// time between successful connection tries
+var connPeriod time.Duration
+
 // serially connect to two addresses
 func connectTwo(conna_addr, connb_addr string) {
+	for {
+		info("Attempting to dial both...")
+		conna, err := net.Dial("tcp", conna_addr)
+		if err != nil {
+			info(err.Error())
+			time.Sleep(retryPeriod * time.Millisecond)
+			continue
+		}
+		connb, err := net.Dial("tcp", connb_addr)
+		if err != nil {
+			info(err.Error())
+			conna.Close()
+			time.Sleep(retryPeriod * time.Millisecond)
+			continue
+		}
+		debug("Have both connections, ")
+		// no go, need to be serial
+		crosspipe(conna, connb)
+		debug("Both connections closed")
+		// wait for a shorter time
+		time.Sleep(connPeriod * time.Millisecond)
+	}
 }
 
 //----------------------------------------------------------------------
@@ -167,6 +195,10 @@ func main() {
 	flag.Var(&connectorsFlag, "c", "Which addresses to try to connect to")
 	flag.BoolVar(&infoptr, "v", false, "Turn on verbose mode")
 	flag.BoolVar(&debugptr, "vv", false, "Turn on extra verbose mode")
+	retryPeriod = time.Duration(1000 * (*flag.Float64("rp", 5.0,
+		"Retry rate for double connections")))
+	connPeriod = time.Duration(1000 * (*flag.Float64("cp", 0.5,
+		"Retry rate for double connections, on success")))
 	flag.Parse()
 
 	debug("Number of listeners: " + fmt.Sprint(len(listenersFlag)))

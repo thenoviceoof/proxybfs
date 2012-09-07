@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"bufio"
+	"regexp"
 )
 
 //----------------------------------------------------------------------
@@ -109,6 +110,17 @@ func (addrs *addresses) Set(value string) error {
 var listenersFlag addresses
 var connectorsFlag addresses
 
+func normalizeAddr(addr string) string {
+	matchp, err := regexp.Match("\\d+", []byte(addr))
+	if err != nil {
+		errmsg(2, "SOMETHING IS WRONG")
+	}
+	if matchp {
+		return ":" + addr
+	}
+	return addr
+}
+
 func main() {
 	// do the actual parsing
 	flag.Var(&listenersFlag, "l", "Which ports to listen on")
@@ -125,7 +137,8 @@ func main() {
 	}
 
 	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {
-		listenOne(listenersFlag[0], connectorsFlag[0])
+		listenOne(normalizeAddr(listenersFlag[0]),
+			normalizeAddr(connectorsFlag[0]))
 	}
 	if len(listenersFlag) == 40 {
 		net.Dial("tcp", "google.com:8080")

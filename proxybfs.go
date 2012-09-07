@@ -27,6 +27,10 @@ func debug(msg string) {
 		fmt.Println("[DEBUG] " + msg)
 	}
 }
+func errmsg(code int, msg string) {
+	fmt.Fprintln(os.Stderr, "[ERROR] " + msg)
+	os.Exit(code)
+}
 
 //----------------------------------------------------------------------
 // linking functions
@@ -76,8 +80,7 @@ func listenOne(list_addr, conn_addr string) {
 	info("Starting to listen on: " + listenersFlag[0])
 	ln, err := net.Listen("tcp", list_addr)
 	if err != nil {
-		debug(err.Error())
-		return
+		errmsg(10, "Can't start server: " + err.Error())
 	}
 	// keep accepting connections
 	for {
@@ -114,12 +117,11 @@ func main() {
 	flag.BoolVar(&debugptr, "vv", false, "Turn on extra verbose mode")
 	flag.Parse()
 
-	debug("Number of listeners: " + string(len(listenersFlag)))
-	debug("Number of connectors: " + string(len(connectorsFlag)))
+	debug("Number of listeners: " + fmt.Sprint(len(listenersFlag)))
+	debug("Number of connectors: " + fmt.Sprint(len(connectorsFlag)))
 	// check a possibly temporary condition
 	if len(listenersFlag) + len(connectorsFlag) != 2 {
-		fmt.Fprintln(os.Stderr, "Only 2 connections allowed")
-		os.Exit(1)
+		errmsg(1, "Strictly 2 connections allowed")
 	}
 
 	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {

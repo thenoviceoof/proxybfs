@@ -12,26 +12,46 @@ import (
 )
 
 //----------------------------------------------------------------------
+// utils
+
+var infoptr = false
+var debugptr = false
+
+func info(msg string) {
+	if infoptr || debugptr {
+		fmt.Println("[INFO] " + msg)
+	}
+}
+func debug(msg string) {
+	if debugptr {
+		fmt.Println("[DEBUG] " + msg)
+	}
+}
+
+//----------------------------------------------------------------------
 // linking functions
 func pull_conn(conn net.Conn, c chan byte, closed chan bool) {
+	debug("Pulling from conn: " + conn.RemoteAddr().Network())
 	read := bufio.NewReader(conn)
 	for {
 		byt, err := read.ReadByte()
 		if err != nil {
+			debug("IO Error: " + err.Error())
+			info("Closing connection...")
 			break
 		}
-		fmt.Println("got byte: " + string(byt))
+		debug("got byte: " + string(byt))
 		c <- byt
 	}
 	close(c)
 	closed <- true
-	fmt.Println("Finish pulling")
 }
 
 func push_conn(conn net.Conn, c chan byte) {
+	debug("Pushing to conn: " + conn.RemoteAddr().Network())
 	writer := bufio.NewWriter(conn)
 	for byt := range c {
-		fmt.Print("putting byte: " + string(byt))
+		debug("putting byte: " + string(byt))
 		writer.WriteByte(byt)
 		writer.Flush()
 	}
@@ -40,7 +60,7 @@ func push_conn(conn net.Conn, c chan byte) {
 
 // facilitate trading between two connections
 func crosspipe(pipea, pipeb net.Conn) {
-	fmt.Println("Linking up")
+	debug("Linking up two net connections")
 	a2b := make(chan byte)
 	b2a := make(chan byte)
 	finish := make(chan bool)  // tell this fn we're done
@@ -48,28 +68,28 @@ func crosspipe(pipea, pipeb net.Conn) {
 	go pull_conn(pipeb, b2a, finish)
 	go push_conn(pipea, b2a)
 	go push_conn(pipeb, a2b)
-	fmt.Println("Finishing up...")
 	_ = <-finish
-	fmt.Println("And there you have it!")
 }
 
 // for each listening connection, make an outgoing one
-func listenTo(list_addr, conn_addr string) {
+func listenOne(list_addr, conn_addr string) {
+	info("Starting to listen on: " + listenersFlag[0])
 	ln, err := net.Listen("tcp", list_addr)
 	if err != nil {
-		fmt.Println(err)
+		debug(err.Error())
+		return
 	}
 	// keep accepting connections
 	for {
 		ln_conn, err := ln.Accept()
 		if err != nil {
-			fmt.Println(err)
+			info(err.Error())
 		}
-		fmt.Println("dialing")
+		debug("dialing")
 		cn_conn, err := net.Dial("tcp", conn_addr)
-		fmt.Println("done dialing")
+		info("Connection created with " + conn_addr)
 		go crosspipe(ln_conn, cn_conn)
-		fmt.Println("waiting for new conn...")
+		debug("waiting for new conn...")
 	}
 }
 
@@ -87,19 +107,23 @@ var listenersFlag addresses
 var connectorsFlag addresses
 
 func main() {
+	// do the actual parsing
 	flag.Var(&listenersFlag, "l", "Which ports to listen on")
 	flag.Var(&connectorsFlag, "c", "Which addresses to try to connect to")
+	flag.BoolVar(&infoptr, "v", false, "Turn on verbose mode")
+	flag.BoolVar(&debugptr, "vv", false, "Turn on extra verbose mode")
 	flag.Parse()
 
+	debug("Number of listeners: " + string(len(listenersFlag)))
+	debug("Number of connectors: " + string(len(connectorsFlag)))
+	// check a possibly temporary condition
 	if len(listenersFlag) + len(connectorsFlag) != 2 {
 		fmt.Fprintln(os.Stderr, "Only 2 connections allowed")
 		os.Exit(1)
 	}
-	fmt.Println(listenersFlag)
-	fmt.Println(connectorsFlag)
 
 	if len(listenersFlag) == 1 && len(connectorsFlag) == 1 {
-		listenTo(listenersFlag[0], connectorsFlag[0])
+		listenOne(listenersFlag[0], connectorsFlag[0])
 	}
 	if len(listenersFlag) == 40 {
 		net.Dial("tcp", "google.com:8080")

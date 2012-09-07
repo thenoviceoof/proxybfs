@@ -4,11 +4,11 @@
 package main
 
 import (
-	"fmt"
+	"bufio"
 	"flag"
+	"fmt"
 	"net"
 	"os"
-	"bufio"
 	"regexp"
 	"time"
 )
@@ -30,7 +30,7 @@ func debug(msg string) {
 	}
 }
 func errmsg(code int, msg string) {
-	fmt.Fprintln(os.Stderr, "[ERROR] " + msg)
+	fmt.Fprintln(os.Stderr, "[ERROR] "+msg)
 	os.Exit(code)
 }
 
@@ -69,7 +69,7 @@ func crosspipe(pipea, pipeb net.Conn) {
 	debug("Linking up two net connections")
 	a2b := make(chan byte)
 	b2a := make(chan byte)
-	finish := make(chan bool)  // tell this fn we're done
+	finish := make(chan bool) // tell this fn we're done
 	go pull_conn(pipea, a2b, finish)
 	go pull_conn(pipeb, b2a, finish)
 	go push_conn(pipea, b2a)
@@ -82,7 +82,7 @@ func listenOne(list_addr, conn_addr string) {
 	info("Starting to listen on: " + list_addr)
 	ln, err := net.Listen("tcp", list_addr)
 	if err != nil {
-		errmsg(10, "Can't start server: " + err.Error())
+		errmsg(10, "Can't start server: "+err.Error())
 	}
 	// keep accepting connections
 	for {
@@ -109,12 +109,12 @@ func listenTwo(lista_addr, listb_addr string) {
 	info("Starting to listen on: " + lista_addr)
 	lna, err := net.Listen("tcp", lista_addr)
 	if err != nil {
-		errmsg(10, "Can't start server: " + err.Error())
+		errmsg(10, "Can't start server: "+err.Error())
 	}
 	info("Starting to listen on: " + listb_addr)
 	lnb, err := net.Listen("tcp", listb_addr)
 	if err != nil {
-		errmsg(10, "Can't start server: " + err.Error())
+		errmsg(10, "Can't start server: "+err.Error())
 	}
 	// keep accepting connections
 	for {
@@ -136,6 +136,7 @@ func listenTwo(lista_addr, listb_addr string) {
 
 // time between failed connection tries
 var retryPeriod time.Duration
+
 // time between successful connection tries
 var connPeriod time.Duration
 
@@ -168,6 +169,7 @@ func connectTwo(conna_addr, connb_addr string) {
 //----------------------------------------------------------------------
 // get us some addresses
 type addresses []string
+
 func (addrs *addresses) String() string {
 	return fmt.Sprint(*addrs)
 }
@@ -175,6 +177,7 @@ func (addrs *addresses) Set(value string) error {
 	*addrs = append(*addrs, value)
 	return nil
 }
+
 var listenersFlag addresses
 var connectorsFlag addresses
 
@@ -204,7 +207,7 @@ func main() {
 	debug("Number of listeners: " + fmt.Sprint(len(listenersFlag)))
 	debug("Number of connectors: " + fmt.Sprint(len(connectorsFlag)))
 	// check a possibly temporary condition
-	if len(listenersFlag) + len(connectorsFlag) != 2 {
+	if len(listenersFlag)+len(connectorsFlag) != 2 {
 		errmsg(1, "Strictly 2 connections allowed")
 	}
 

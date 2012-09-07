@@ -8,7 +8,6 @@ import (
 	"flag"
 	"net"
 	"os"
-	"io"  // for the EOF error
 	"bufio"
 )
 
@@ -18,26 +17,20 @@ func pull_conn(conn net.Conn, c chan byte, closed chan bool) {
 	read := bufio.NewReader(conn)
 	for {
 		byt, err := read.ReadByte()
-		switch err {
-		case io.EOF:
+		if err != nil {
 			break
-		default:
-			fmt.Println(err)
 		}
-		fmt.Print("got byte: " + string(byt))
+		fmt.Println("got byte: " + string(byt))
 		c <- byt
 	}
 	close(c)
 	closed <- true
+	fmt.Println("Finish pulling")
 }
 
 func push_conn(conn net.Conn, c chan byte) {
 	writer := bufio.NewWriter(conn)
-	for {
-		byt, ok := <-c
-		if !ok {
-			break
-		}
+	for byt := range c {
 		fmt.Print("putting byte: " + string(byt))
 		writer.WriteByte(byt)
 		writer.Flush()
@@ -50,13 +43,13 @@ func crosspipe(pipea, pipeb net.Conn) {
 	fmt.Println("Linking up")
 	a2b := make(chan byte)
 	b2a := make(chan byte)
-	finish := make(chan bool)
+	finish := make(chan bool)  // tell this fn we're done
 	go pull_conn(pipea, a2b, finish)
 	go pull_conn(pipeb, b2a, finish)
 	go push_conn(pipea, b2a)
 	go push_conn(pipeb, a2b)
 	fmt.Println("Finishing up...")
-	_, _ = <-finish, <-finish
+	_ = <-finish
 	fmt.Println("And there you have it!")
 }
 

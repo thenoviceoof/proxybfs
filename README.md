@@ -20,6 +20,11 @@ send all telnet traffic to sshd, and vice-versa
 
     ./proxybfs -c 22 -c 21
 
+DESIGN PROCESS
+--------------------------------------------------------------------------------
+This was originally meant to deliver connections to a mobile vm,
+allowing people to help out with debuging easily.
+
 TODO
 --------------------------------------------------------------------------------
 - multiple listens -> 1 connect, funnel

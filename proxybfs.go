@@ -78,7 +78,7 @@ func crosspipe(pipea, pipeb net.Conn) {
 
 // for each listening connection, make an outgoing one
 func listenOne(list_addr, conn_addr string) {
-	info("Starting to listen on: " + listenersFlag[0])
+	info("Starting to listen on: " + list_addr)
 	ln, err := net.Listen("tcp", list_addr)
 	if err != nil {
 		errmsg(10, "Can't start server: " + err.Error())
@@ -88,6 +88,7 @@ func listenOne(list_addr, conn_addr string) {
 		ln_conn, err := ln.Accept()
 		if err != nil {
 			info(err.Error())
+			continue
 		}
 		debug("dialing")
 		cn_conn, err := net.Dial("tcp", conn_addr)
@@ -100,6 +101,40 @@ func listenOne(list_addr, conn_addr string) {
 		go crosspipe(ln_conn, cn_conn)
 		debug("waiting for new conn...")
 	}
+}
+
+// listen on both sides, link them up
+func listenTwo(lista_addr, listb_addr string) {
+	info("Starting to listen on: " + lista_addr)
+	lna, err := net.Listen("tcp", lista_addr)
+	if err != nil {
+		errmsg(10, "Can't start server: " + err.Error())
+	}
+	info("Starting to listen on: " + listb_addr)
+	lnb, err := net.Listen("tcp", listb_addr)
+	if err != nil {
+		errmsg(10, "Can't start server: " + err.Error())
+	}
+	// keep accepting connections
+	for {
+		lna_conn, err := lna.Accept()
+		if err != nil {
+			info(err.Error())
+			continue
+		}
+		lnb_conn, err := lnb.Accept()
+		if err != nil {
+			info(err.Error())
+			lna.Close()
+			continue
+		}
+		go crosspipe(lna_conn, lnb_conn)
+		debug("waiting for new conn...")
+	}
+}
+
+// serially connect to two addresses
+func connectTwo(conna_addr, connb_addr string) {
 }
 
 //----------------------------------------------------------------------
@@ -145,7 +180,12 @@ func main() {
 		listenOne(normalizeAddr(listenersFlag[0]),
 			normalizeAddr(connectorsFlag[0]))
 	}
-	if len(listenersFlag) == 40 {
-		net.Dial("tcp", "google.com:8080")
+	if len(listenersFlag) == 2 && len(connectorsFlag) == 0 {
+		listenTwo(normalizeAddr(listenersFlag[0]),
+			normalizeAddr(listenersFlag[1]))
+	}
+	if len(listenersFlag) == 0 && len(connectorsFlag) == 2 {
+		connectTwo(normalizeAddr(connectorsFlag[0]),
+			normalizeAddr(connectorsFlag[1]))
 	}
 }

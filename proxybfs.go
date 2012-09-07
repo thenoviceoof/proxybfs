@@ -116,7 +116,7 @@ var listenersFlag addresses
 var connectorsFlag addresses
 
 func normalizeAddr(addr string) string {
-	matchp, err := regexp.Match("\\d+", []byte(addr))
+	matchp, err := regexp.Match("^\\d{1,5}$", []byte(addr))
 	if err != nil {
 		errmsg(2, "Failure while trying to normalize the address")
 	}

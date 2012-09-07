@@ -91,6 +91,11 @@ func listenOne(list_addr, conn_addr string) {
 		}
 		debug("dialing")
 		cn_conn, err := net.Dial("tcp", conn_addr)
+		if err != nil {
+			info(err.Error())
+			ln_conn.Close()
+			continue
+		}
 		info("Connection created with " + conn_addr)
 		go crosspipe(ln_conn, cn_conn)
 		debug("waiting for new conn...")
@@ -113,7 +118,7 @@ var connectorsFlag addresses
 func normalizeAddr(addr string) string {
 	matchp, err := regexp.Match("\\d+", []byte(addr))
 	if err != nil {
-		errmsg(2, "SOMETHING IS WRONG")
+		errmsg(2, "Failure while trying to normalize the address")
 	}
 	if matchp {
 		return ":" + addr
